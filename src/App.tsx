@@ -3,31 +3,31 @@ import config from "./config.json";
 import { useTokenHook } from "./hooks/use-token-contract-hook";
 import { useWeb3ConnectionHook } from "./hooks/use-web3Connection-hook";
 import "./App.css";
+import { useExchangeHook } from "./hooks/use-exchange-hook";
 
 function App() {
-  const {
-    chainId,
-    initialize: initializeWeb3,
-  } = useWeb3ConnectionHook();
-  const { initialize: initializeToken } = useTokenHook();
-  const [isWeb3Initialized, setIsWeb3Initialized] = useState(false);
-
-  useEffect(() => {
-    const init = async () => {
-      await initializeWeb3();
-      setIsWeb3Initialized(true);
-    };
-    init();
-  }, [initializeWeb3]);
+  const { chainId, isWeb3Initialized, balance } = useWeb3ConnectionHook();
+  const { exchange, initialize: initializeExchange } = useExchangeHook();
+  const { initialize: initializeTokens, tokens } = useTokenHook();
 
   useEffect(() => {
     //@ts-ignore
-    if (isWeb3Initialized && chainId && config[chainId]?.wEAE) {
+    if (isWeb3Initialized && chainId && config[chainId]) {
       //@ts-ignore
-      initializeToken(config[chainId]?.wEAE?.address
-      );
+      initializeExchange(config[chainId]?.exchange?.address);
+
+      const addresses = [
+        //@ts-ignore
+        config[chainId]?.wEAE?.address,
+        //@ts-ignore
+        config[chainId]?.mETH?.address,
+      ];
+
+      initializeTokens(addresses);
     }
-  }, [isWeb3Initialized, chainId, initializeToken]);
+  }, [isWeb3Initialized, chainId, initializeTokens, initializeExchange]);
+
+  console.log(balance)
 
   return (
     <div>

@@ -3,31 +3,38 @@ import { ethers } from "ethers";
 import { Contract } from "ethers";
 import TOKEN_ABI from "../abis/token.json";
 
-interface BlockchainDataInterface {
-  token: Contract;
+interface TokenData {
+  contract: Contract;
   symbol: string;
-  initialize: (address: string) => Promise<void>;
+}
+
+interface BlockchainDataInterface {
+  tokens: TokenData[];
+  initialize: (addresses: string[]) => Promise<void>;
 }
 
 const loadTokenData = async (address: string) => {
   try {
     //@ts-ignore
     const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const token = new ethers.Contract(address, TOKEN_ABI, provider);
-    const symbol = await token.symbol();
-    return { token, symbol };
+    const contract = new ethers.Contract(address, TOKEN_ABI, provider);
+    const symbol = await contract.symbol();
+    return { contract, symbol };
   } catch (error) {
-    console.error("An error occurred while fetching token data:", error);
-    return { token: null!, symbol: "" };
+    console.error(`An error occurred while fetching token data for ${address}:`, error);
+    return null;
   }
 };
 
 export const useTokenHook = create<BlockchainDataInterface>((set) => ({
-  token: null!,
-  symbol: "",
+  tokens: [],
 
-  initialize: async (address: string) => {
-    const tokenData = await loadTokenData(address);
-    set({ token: tokenData?.token, symbol: tokenData?.symbol });
+  initialize: async (addresses: string[]) => {
+    const tokenDataPromises = addresses.map(loadTokenData);
+    const tokenDataResults = await Promise.all(tokenDataPromises);
+
+    const tokens: TokenData[] = tokenDataResults.filter((data): data is TokenData => data !== null);
+
+    set({ tokens });
   },
 }));
