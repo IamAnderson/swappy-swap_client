@@ -1,65 +1,33 @@
-import { useEffect } from "react";
-import { ethers } from "ethers";
+import { useEffect, useState } from "react";
 import config from "./config.json";
-import TOKEN_ABI from "./abis/token.json";
+import { useTokenHook } from "./hooks/use-token-contract-hook";
+import { useWeb3ConnectionHook } from "./hooks/use-web3Connection-hook";
 import "./App.css";
 
 function App() {
+  const {
+    chainId,
+    initialize: initializeWeb3,
+  } = useWeb3ConnectionHook();
+  const { initialize: initializeToken } = useTokenHook();
+  const [isWeb3Initialized, setIsWeb3Initialized] = useState(false);
+
   useEffect(() => {
-    const loadBlockChainData = async () => {
-      //@ts-ignore
-      if (typeof window.ethereum === "undefined") {
-        console.log(
-          "Ethereum object not found, do you have MetaMask installed?"
-        );
-        return;
-      }
-
-      const connectWallet = async (retries = 3) => {
-        try {
-          //@ts-ignore
-          const accounts = await window.ethereum.request({
-            method: "eth_requestAccounts",
-          });
-          if (accounts && accounts.length > 0) {
-            console.log("Connected account:", accounts[0]);
-            //@ts-ignore
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-            const { chainId } = await provider.getNetwork();
-            // console.log(chainId);
-
-            const token = new ethers.Contract(
-              //@ts-ignore
-              config[chainId].wEAE,
-              TOKEN_ABI,
-              provider
-            );
-            // console.log(token.address);
-
-            const symbol = await token.symbol();
-            // console.log("Symbol:", symbol);
-          } else {
-            console.log("No accounts found");
-          }
-        } catch (error: any) {
-          if (error.code === -32002 && retries > 0) {
-            console.log("Request already pending. Retrying in 1 second...");
-            setTimeout(() => connectWallet(retries - 1), 1000);
-          } else {
-            console.error(
-              "An error occurred while connecting to the wallet:",
-              error
-            );
-          }
-        }
-      };
-
-      await connectWallet();
+    const init = async () => {
+      await initializeWeb3();
+      setIsWeb3Initialized(true);
     };
+    init();
+  }, [initializeWeb3]);
 
-    loadBlockChainData();
-  }, []);
+  useEffect(() => {
+    //@ts-ignore
+    if (isWeb3Initialized && chainId && config[chainId]?.wEAE) {
+      //@ts-ignore
+      initializeToken(config[chainId]?.wEAE?.address
+      );
+    }
+  }, [isWeb3Initialized, chainId, initializeToken]);
 
   return (
     <div>
